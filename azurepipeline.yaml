@@ -1,1 +1,70 @@
 ##Azure
+trigger: none
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  tfrg: 'rg-uracognitivago-dev'
+  serviceconnection: 'claro-dev-ura-cognitiva'
+  storage: 'projectname'
+  bkcontainer: 'tfstate'
+  bkstrgkey: 'devpipeline.terraform.tfstate'
+  destroy: 'false'
+
+stages:
+  - stage: tfvalidate
+    jobs:
+      - job: validate
+        continueOnError: false
+        timeoutInMinutes: 5
+        steps:
+          - task: Install Terragrunt@0
+            displayName: Terragrunt_install
+            inputs:
+              terragruntversion: '0.35.16'
+          - task: CmdLine@2
+            displayName: Change permission
+            inputs:
+              script: chmod +x /opt/hostedtoolcache/terragrunt/0.35.16/x64/terragrunt
+          - task: AzureCLI@1
+            displayName: Set Terragrunt Azure Credentials
+            inputs:
+              azureSubscription: 'claro-dev-ura-cognitiva'
+              scriptLocation: inlineScript
+              inlineScript: |
+                output=$(az storage account keys list --account-name tfstateuracognitivadev --resource-group rg-uracognitivago-dev --query "[?keyName=='key2'].value | [0]" -o tsv) | base64 --decode
+                output_base64=$(echo -n "$output" | base64)
+                set -eu
+                sed -i 's/access_key_substituida/"$output_base64"/g' terragrunt.hcl
+          - task: AzureCLI@2
+            displayName: Terragrunt_init
+            inputs:
+              azureSubscription: 'claro-dev-ura-cognitiva'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: 'terragrunt init'
+          - task: AzureCLI@2
+            condition: eq(variables['destroy'], 'false')
+            displayName: Terragrunt_plan
+            inputs:
+              azureSubscription: 'claro-dev-ura-cognitiva'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: 'terragrunt run-all plan'
+          - task: AzureCLI@2
+            condition: eq(variables['destroy'], 'false')
+            displayName: Terragrunt_apply
+            inputs:
+              azureSubscription: 'claro-dev-ura-cognitiva'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: 'terragrunt run-all apply -input=false -auto-approve --terragrunt-non-interactive'
+          - task: AzureCLI@2
+            condition: eq(variables['destroy'], 'true')
+            displayName: Terragrunt_destroy
+            inputs:
+              azureSubscription: 'claro-dev-ura-cognitiva'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: 'terragrunt run-all destroy --terragrunt-non-interactive --auto-approve'
