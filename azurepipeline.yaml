@@ -33,10 +33,8 @@ stages:
               azureSubscription: 'claro-dev-ura-cognitiva'
               scriptLocation: inlineScript
               inlineScript: |
-                output=$(az storage account keys list --account-name tfstateuracognitivadev --resource-group rg-uracognitivago-dev --query "[?keyName=='key2'].value | [0]" -o tsv) | base64 --decode
-                output_base64=$(echo -n "$output" | base64)
                 set -eu
-                sed -i 's/access_key_substituida/"$output_base64"/g' terragrunt.hcl
+                sed -i 's/access_key_substituida/$(ACCESS_KEY)/g' terragrunt.hcl
           - task: AzureCLI@2
             displayName: Terragrunt_init
             inputs:
