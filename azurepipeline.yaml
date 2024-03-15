@@ -27,10 +27,12 @@ stages:
             displayName: Change permission
             inputs:
               script: chmod +x /opt/hostedtoolcache/terragrunt/0.35.16/x64/terragrunt
-          - task: CmdLine@2
-            displayName: Git Clone
+          - task: DownloadGitHubRelease@0
             inputs:
-              script: git clone https://github.com/jodemicruz83/Ura-Cognitiva-terragrunt.git
+              connection: 'github'
+              userRepository: 'jodemicruz83/Ura-Cognitiva-terragrunt'
+              defaultVersionType: 'latest'
+              downloadPath: '$(System.ArtifactsDirectory)'
           - task: AzureCLI@1
             displayName: Set Terragrunt Azure Credentials
             inputs:
